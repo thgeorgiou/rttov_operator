@@ -1,0 +1,60 @@
+# RTTOV Operator Configuration
+# Example for MSG-4 SEVIRI instrument (RTTOV v14)
+
+verbose = false
+
+[channels]
+# IR channels to simulate
+ir_channels = ["IR108", "WV62", "WV73"]
+# VIS channels to simulate (requires MFASIS-NN coefficient file)
+vis_channels = ["VIS06"]
+
+# Channel name -> RTTOV coefficient file channel index mapping
+# This is instrument-specific. For MSG-4 SEVIRI:
+# https://nwp-saf.eumetsat.int/downloads/rtcoef_rttov12/ir_srf/rtcoef_msg_4_seviri_srf.html
+[channels.channel_ids]
+VIS06 = 1
+VIS08 = 2
+NIR16 = 3
+WV62 = 5
+WV73 = 6
+IR108 = 9
+
+[coefficients]
+# Base directory of RTTOV v14 installation
+rttov_base = "/opt/rttov14"
+# Coefficient files relative to rttov_base
+coef_file = "rtcoef_rttov14/rttov14pred54L/rtcoef_msg_4_seviri_o3co2.dat"
+hydrotable_file = "rtcoef_rttov14/hydrotable_visir/rttov_hydrotable_msg_4_seviri.dat"
+mfasis_nn_file = "rtcoef_rttov14/mfasis_nn/rttov_mfasis_nn_hydro_msg_4_seviri_v140.dat"
+# Atlas data directories (v14 atlases are netCDF format; download from NWPSAF)
+emis_atlas_path = "emis_data"
+brdf_atlas_path = "brdf_data"
+# Optional: path to pyrttov wrapper directory (if not on PYTHONPATH)
+# python_wrapper_path = "/opt/rttov14/wrapper"
+
+[satellite]
+# Satellite viewing geometry (constant across domain)
+satzen = 45.0   # Satellite zenith angle [degrees]
+satazi = 180.0  # Satellite azimuth angle [degrees]
+
+[clouds]
+kappa = 0.1     # Fraction of QSNOW added to QICE
+# Hydrometeor type configuration (indices into the Hydro array, 0-based)
+# These correspond to the particle types in the scattering coefficient file.
+# For the standard RTTOV 6-type cloud scheme:
+#   0=Stco, 1=Stma, 2=Cucc, 3=Cucp, 4=Cuma, 5=Cirr
+nhydro = 6
+liq_hydro_idx = 2   # Liquid water -> Cumulus Continental Clean
+ice_hydro_idx = 5   # Ice -> Cirrus
+clwde = 20.0        # Effective diameter for liquid water clouds [microns]
+icede = 60.0        # Effective diameter for ice clouds [microns]
+
+[surface]
+default_salinity = 35.0
+default_snow_fraction = 0.0
+default_foam_fraction = 0.0
+
+[performance]
+nthreads = 48       # OpenMP threads for RTTOV
+nprofs_per_call = 1024  # Profiles per internal RTTOV batch
