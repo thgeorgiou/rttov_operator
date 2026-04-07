@@ -124,6 +124,11 @@ class AerosolConfig:
     naer_total: int = 9
     """How many species the aerosol coefficient files contains (count)"""
 
+    unit_scale: float = 1.0
+    """Scale factor applied to all aerosol mixing ratios after the species_map
+    linear combination.  Use this to convert WRF aerosol units to the kg/kg
+    that RTTOV expects (e.g. 1e-9 for WRF dust in µg/kg)."""
+
     species_map: dict[int, dict[str, float]] = field(default_factory=dict)
     """
     The linear coefficients to use for mapping between the species RTTOV uses and WRF.

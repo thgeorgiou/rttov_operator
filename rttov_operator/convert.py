@@ -204,11 +204,12 @@ def extract_rttov_profiles(
     xland = ds_t["XLAND"].values.ravel()
     surftype = np.where(xland >= 2, 1, 0).astype(np.int32)
 
-    # Aerosol data
+    # Aerosol data (apply unit_scale to convert WRF units to kg/kg for RTTOV)
     aerosol_data = {}
+    scale = config.aerosols.unit_scale
     for idx, map in config.aerosols.species_map.items():
         aerosol_data[int(idx)] = _reshape_3d(
-            sum(ds_t[k].values * v for k, v in map.items()), nlevels
+            scale * sum(ds_t[k].values * v for k, v in map.items()), nlevels
         )
 
     return RTTOVProfileData(
