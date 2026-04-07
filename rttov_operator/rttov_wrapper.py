@@ -146,8 +146,9 @@ def build_profiles(
     profiles.GasUnits = 1  # kg/kg for mixing ratios (gas_unit_kg_per_kg)
     profiles.MmrHydro = True  # kg/kg for hydrometeor mixing ratios
 
-    # Pressure: half-levels required; full-levels omitted (RTTOV derives them from PHalf)
+    # Pressure half-levels and full-levels
     profiles.PHalf = data.p_half  # (nprofiles, nlevels+1)
+    profiles.P = data.p  # (nprofiles, nlevels) — must be set explicitly, defaults to zeros
 
     # Atmospheric profiles (on nlayers = nlevels full levels)
     profiles.T = data.t

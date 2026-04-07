@@ -149,18 +149,11 @@ def extract_rttov_profiles(
     for i in range(1, p_half.shape[1]):
         p_half[:, i] = np.maximum(p_half[:, i], p_half[:, i - 1] + eps)
 
-    # Check pressure monotonicity (should decrease from ground to TOA, i.e. increase
-    # in our TOA-first array from left to right -- but after flip it should be
-    # decreasing from index 0 to nlevels-1, i.e. TOA has lowest pressure)
-    # After flip: index 0 = TOA (low pressure), index -1 = ground (high pressure)
-    # So p should be increasing along axis=1
-    non_monotonic = np.any(np.diff(p, axis=1) <= 0)
-    if non_monotonic:
-        logger.warning(
-            "Non-monotonic pressure profiles detected. "
-            "RTTOV's EnableInterp and ApplyRegLimits should handle this, "
-            "but results may be degraded."
-        )
+    # Derive full-level pressures as midpoints of adjacent half-levels.
+    # This guarantees p_half[k] < p[k] < p_half[k+1] (strict interleaving),
+    # which RTTOV requires. Using the raw WRF pressures could violate this
+    # after the monotonicity enforcement above.
+    p = 0.5 * (p_half[:, :-1] + p_half[:, 1:])
 
     # Temperature: theta * (p_hPa / 1000)^(R/cp)
     theta = ds_t["air_potential_temperature"].values  # (z, y, x)
