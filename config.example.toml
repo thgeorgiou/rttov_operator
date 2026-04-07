@@ -26,6 +26,7 @@ rttov_base = "/opt/rttov14"
 # Coefficient files relative to rttov_base
 coef_file = "rtcoef_rttov14/rttov14pred54L/rtcoef_msg_4_seviri_o3co2.dat"
 hydrotable_file = "rtcoef_rttov14/hydrotable_visir/rttov_hydrotable_msg_4_seviri.dat"
+aertable_file = "rtcoef_rttov14/aertable_visir/rttov_aertable_msg_4_seviri_cams.dat"
 mfasis_nn_file = "rtcoef_rttov14/mfasis_nn/rttov_mfasis_nn_hydro_msg_4_seviri_v140.dat"
 # Atlas data directories (v14 atlases are netCDF format; download from NWPSAF)
 emis_atlas_path = "emis_data"
@@ -49,6 +50,15 @@ liq_hydro_idx = 2   # Liquid water -> Cumulus Continental Clean
 ice_hydro_idx = 5   # Ice -> Cirrus
 clwde = 20.0        # Effective diameter for liquid water clouds [microns]
 icede = 60.0        # Effective diameter for ice clouds [microns]
+
+[aerosols]
+enabled = true
+naer_total = 9 # How many species are defined in the aertable_file
+
+[aerosols.species_map] # How to map from the GOCART dust bins to the 3 CAMS bins, see `utils/wrf_to_cams_dust_mapping.py`
+2 = {"DUST_1" = 0.7197}
+3 = {"DUST_1" = 0.1069}
+4 = {"DUST_1" = 0.1734, "DUST_2" = 1.0, "DUST_3" = 1.0, "DUST_4" = 1.0, "DUST_5" = 1.0}
 
 [surface]
 default_salinity = 35.0

@@ -50,8 +50,15 @@ class CoefficientPaths:
     coef_file: str = "rtcoef_rttov14/rttov14pred54L/rtcoef_msg_4_seviri_o3co2.dat"
     """Coefficient file path relative to rttov_base"""
 
-    hydrotable_file: str = "rtcoef_rttov14/hydrotable_visir/rttov_hydrotable_msg_4_seviri.dat"
+    hydrotable_file: str = (
+        "rtcoef_rttov14/hydrotable_visir/rttov_hydrotable_msg_4_seviri.dat"
+    )
     """Hydrotable file path relative to rttov_base (VIS/IR cloud scattering)"""
+
+    aertable_file: str = (
+        "rtcoef_rttov14/aertable_visir/rttov_aertable_msg_4_seviri_cams.dat"
+    )
+    """Which aerosol table to use relative to rttov_base (used when Aerosols are enabled)"""
 
     mfasis_nn_file: str = (
         "rtcoef_rttov14/mfasis_nn/rttov_mfasis_nn_hydro_msg_4_seviri_v140.dat"
@@ -108,6 +115,28 @@ class CloudConfig:
 
 
 @dataclass
+class AerosolConfig:
+    """Aerosols configuration for RRTOV"""
+
+    enabled: bool = False
+    """Whether to enable Aerosols"""
+
+    naer_total: int = 9
+    """How many species the aerosol coefficient files contains (count)"""
+
+    species_map: dict[int, dict[str, float]] = field(default_factory=dict)
+    """
+    The linear coefficients to use for mapping between the species RTTOV uses and WRF.
+    The outer dictionary keys refer to `aertable` species indices, while the inner
+    dictionary contains a mapping between WRF-variable and the coefficient.
+    So for example, the dictionary {3: {'DUST_1': 0.5, 'DUST_2': 0.2 }} would set the
+    `Aer3` aerosol species to 0.5 * DUST_1 + 0.2 * DUST_2.
+
+    Any species not specified here gets a default value of 0.0.
+    """
+
+
+@dataclass
 class SurfaceDefaults:
     """Default surface property values."""
 
@@ -137,6 +166,7 @@ class RTTOVOperatorConfig(DataClassTOMLMixin):
     )
     satellite: SatelliteGeometry = field(default_factory=SatelliteGeometry)
     clouds: CloudConfig = field(default_factory=CloudConfig)
+    aerosols: AerosolConfig = field(default_factory=AerosolConfig)
     surface: SurfaceDefaults = field(default_factory=SurfaceDefaults)
     performance: PerformanceConfig = field(default_factory=PerformanceConfig)
     verbose: bool = False

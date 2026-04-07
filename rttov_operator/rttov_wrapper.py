@@ -53,6 +53,7 @@ def create_rttov_instance(
     # Coefficient files
     rttov.FileCoef = coef.resolve(coef.coef_file)
     rttov.FileHydrotable = coef.resolve(coef.hydrotable_file)
+    rttov.FileAertable = coef.resolve(coef.aertable_file)
     if mode == "vis":
         rttov.FileMfasisNN = coef.resolve(coef.mfasis_nn_file)
 
@@ -62,6 +63,7 @@ def create_rttov_instance(
     rttov.Options.NprofsPerCall = config.performance.nprofs_per_call
     rttov.Options.EnableInterp = True       # was AddInterp
     rttov.Options.Hydrometeors = True       # was AddClouds
+    rttov.Options.Aerosols = config.aerosols.enabled
     rttov.Options.UserHydroOptParam = False  # was UserCldOptParam
     rttov.Options.ThermalSolver = 3         # 3=delta-Eddington (THERMAL_SOLVER_DELTA_EDD)
     rttov.Options.O3Data = False            # was OzoneData
@@ -73,6 +75,7 @@ def create_rttov_instance(
     if mode == "ir":
         rttov.Options.Solar = False         # was AddSolar
         rttov.Options.SolarSolver = 1       # was VisScattModel
+        rttov.Options.UserAerOptParam = False
         chan_list = config.channels.ir_channel_id_list()
     else:
         rttov.Options.Solar = True          # was AddSolar
@@ -218,6 +221,16 @@ def build_profiles(
     ).astype(np.float64)
     skin[:, 0] = data.tsk[:, 0]
     profiles.Skin = skin.reshape(nprofiles, 1, 9)
+    
+    # Aerosols if enabled
+    if config.aerosols.enabled:
+        profiles.MmrAer = True # Use kg/kg mixing ratios
+        for n in range(1, config.aerosols.naer_total + 1):
+            if n in data.aerosol_data:
+                profiles.setAerN(data.aerosol_data[n], n)
+            else:
+                profiles.setAerN(zeros.copy(), n)
+        
 
     return profiles
 
@@ -251,12 +264,13 @@ def setup_surface_emis_refl(
 
     coef = config.coefficients
     month = time_utc.month
+    year = time_utc.year
 
     # Try IR emissivity atlas
     try:
         ir_atlas = pyrttov.Atlas()
         ir_atlas.AtlasPath = coef.resolve(coef.emis_atlas_path)
-        ir_atlas.loadIrEmisAtlas(month, ang_corr=True)
+        ir_atlas.loadIrEmisAtlas(month, rttov_instance, year=year, atlas_id=2, ang_corr=True) # ATLAS ID = 3 for CAMEL climatology
         atlas_emis = ir_atlas.getEmisBrdf(rttov_instance)  # (nprofiles, nsurfaces, nchan)
         surfemisrefl[0] = atlas_emis  # emissivity
         surfemisrefl[1] = atlas_emis  # direct reflectance

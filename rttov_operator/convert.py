@@ -91,6 +91,9 @@ class RTTOVProfileData:
     surftype: np.ndarray
     """Surface type: 0=land, 1=sea"""
 
+    aerosol_data: dict[int, np.ndarray]
+    """Data for each aerosol species, indexed as in aertable"""
+
 
 def _reshape_3d(arr: np.ndarray, nlevels: int) -> np.ndarray:
     """Reshape (z, y, x) -> (nprofiles, nlevels) and flip to TOA-first."""
@@ -127,14 +130,16 @@ def extract_rttov_profiles(
     # Pressure half-levels: computed by sandwiching full levels between P_TOP and PSFC,
     # then averaging adjacent pairs to get nlevels+1 interface pressures.
     p_top_hpa = float(ds_t["P_TOP"].values) / 100.0  # scalar Pa -> hPa
-    psfc_hpa = ds_t["PSFC"].values / 100.0           # (y, x)
+    psfc_hpa = ds_t["PSFC"].values / 100.0  # (y, x)
     # Build extended array: (nlevels+2, y, x).
     # WRF z=0 is near surface, z=nlevels-1 is near TOA, so PSFC goes at index 0,
     # P_TOP at index nlevels+1. _reshape_3d will then flip to TOA-first order.
     p_top_bc = np.full((1, ny, nx), p_top_hpa)
     p_sfc_bc = psfc_hpa[np.newaxis, :, :]
-    p_extended = np.concatenate([p_sfc_bc, p_hpa, p_top_bc], axis=0)  # (nlevels+2, y, x)
-    p_half_hpa = 0.5 * (p_extended[:-1] + p_extended[1:])             # (nlevels+1, y, x)
+    p_extended = np.concatenate(
+        [p_sfc_bc, p_hpa, p_top_bc], axis=0
+    )  # (nlevels+2, y, x)
+    p_half_hpa = 0.5 * (p_extended[:-1] + p_extended[1:])  # (nlevels+1, y, x)
     p_half = _reshape_3d(p_half_hpa, nlevels + 1)
 
     # Enforce strict monotonic increase (TOA-first) required by RTTOV.
@@ -177,8 +182,7 @@ def extract_rttov_profiles(
     # Cloud fraction
     cfrac = _reshape_3d(ds_t["CLDFRA"].values, nlevels)
 
-    # --- 2D surface fields ---
-
+    # 2D surface fields
     tsk = _reshape_2d(ds_t["TSK"].values)
     psfc = _reshape_2d(ds_t["PSFC"].values / 100.0)  # Pa -> hPa
     t2m = ds_t["T2"].values.ravel()
@@ -186,8 +190,7 @@ def extract_rttov_profiles(
     u10 = _reshape_2d(ds_t["U10"].values)
     v10 = _reshape_2d(ds_t["V10"].values)
 
-    # --- Per-profile geometry ---
-
+    # Per-profile geometry
     lat = ds_t["latitude"].values.ravel()
     lon = ds_t["longitude"].values.ravel()
 
@@ -200,6 +203,11 @@ def extract_rttov_profiles(
     # Surface type from XLAND: 1=land->0, 2=water->1
     xland = ds_t["XLAND"].values.ravel()
     surftype = np.where(xland >= 2, 1, 0).astype(np.int32)
+
+    # Aerosol data
+    aerosol_data = {}
+    for idx, map in config.aerosols.species_map.items():
+        aerosol_data[int(idx)] = _reshape_3d(sum(ds_t[k].values * v for k, v in map.items()), nlevels)
 
     return RTTOVProfileData(
         ny=ny,
@@ -223,4 +231,5 @@ def extract_rttov_profiles(
         lon=lon.astype(np.float64),
         surface_altitude=surface_altitude.astype(np.float64),
         surftype=surftype,
+        aerosol_data=aerosol_data,
     )
