@@ -207,7 +207,9 @@ def extract_rttov_profiles(
     # Aerosol data
     aerosol_data = {}
     for idx, map in config.aerosols.species_map.items():
-        aerosol_data[int(idx)] = _reshape_3d(sum(ds_t[k].values * v for k, v in map.items()), nlevels)
+        aerosol_data[int(idx)] = _reshape_3d(
+            sum(ds_t[k].values * v for k, v in map.items()), nlevels
+        )
 
     return RTTOVProfileData(
         ny=ny,

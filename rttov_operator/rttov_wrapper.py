@@ -61,25 +61,25 @@ def create_rttov_instance(
     rttov.Options.StoreRad = False
     rttov.Options.Nthreads = config.performance.nthreads
     rttov.Options.NprofsPerCall = config.performance.nprofs_per_call
-    rttov.Options.EnableInterp = True       # was AddInterp
-    rttov.Options.Hydrometeors = True       # was AddClouds
+    rttov.Options.EnableInterp = True  # was AddInterp
+    rttov.Options.Hydrometeors = True  # was AddClouds
     rttov.Options.Aerosols = config.aerosols.enabled
     rttov.Options.UserHydroOptParam = False  # was UserCldOptParam
-    rttov.Options.ThermalSolver = 3         # 3=delta-Eddington (THERMAL_SOLVER_DELTA_EDD)
-    rttov.Options.O3Data = False            # was OzoneData
+    rttov.Options.ThermalSolver = 3  # 3=delta-Eddington (THERMAL_SOLVER_DELTA_EDD)
+    rttov.Options.O3Data = False  # was OzoneData
     rttov.Options.ApplyRegLimits = True
     rttov.Options.VerboseWrapper = config.verbose
     rttov.Options.Verbose = config.verbose
 
     # Mode-specific options
     if mode == "ir":
-        rttov.Options.Solar = False         # was AddSolar
-        rttov.Options.SolarSolver = 1       # was VisScattModel
+        rttov.Options.Solar = False  # was AddSolar
+        rttov.Options.SolarSolver = 1  # was VisScattModel
         rttov.Options.UserAerOptParam = False
         chan_list = config.channels.ir_channel_id_list()
     else:
-        rttov.Options.Solar = True          # was AddSolar
-        rttov.Options.SolarSolver = 2       # 2=MFASIS-NN (SOLAR_SOLVER_MFASIS_NN)
+        rttov.Options.Solar = True  # was AddSolar
+        rttov.Options.SolarSolver = 2  # 2=MFASIS-NN (SOLAR_SOLVER_MFASIS_NN)
         chan_list = config.channels.vis_channel_id_list()
 
     # Load instrument
@@ -113,9 +113,7 @@ def compute_solar_angles(
     """
     nprofiles = len(lat)
     times = pd.DatetimeIndex([time_utc] * nprofiles, tz="UTC")
-    solpos = pvlib.solarposition.get_solarposition(
-        times, lat, lon, method="nrel_numpy"
-    )
+    solpos = pvlib.solarposition.get_solarposition(times, lat, lon, method="nrel_numpy")
     sunzen = solpos["apparent_zenith"].values
     sunazi = solpos["azimuth"].values
     return sunzen.astype(np.float64), sunazi.astype(np.float64)
@@ -145,11 +143,11 @@ def build_profiles(
 
     # Profiles(nprofiles, nlevels, nsurfaces): nlevels = half-level count = nlayers+1
     profiles = pyrttov.Profiles(nprofiles, nlevels + 1, 1)
-    profiles.GasUnits = 1       # kg/kg for mixing ratios (gas_unit_kg_per_kg)
-    profiles.MmrHydro = True    # kg/kg for hydrometeor mixing ratios
+    profiles.GasUnits = 1  # kg/kg for mixing ratios (gas_unit_kg_per_kg)
+    profiles.MmrHydro = True  # kg/kg for hydrometeor mixing ratios
 
     # Pressure: half-levels required; full-levels omitted (RTTOV derives them from PHalf)
-    profiles.PHalf = data.p_half   # (nprofiles, nlevels+1)
+    profiles.PHalf = data.p_half  # (nprofiles, nlevels+1)
 
     # Atmospheric profiles (on nlayers = nlevels full levels)
     profiles.T = data.t
@@ -169,25 +167,41 @@ def build_profiles(
 
     profiles.setHydroN(data.qc.astype(np.float64), liq)
     profiles.setHydroFracN(cfrac, liq)
-    profiles.setHydroDeffN(np.full((nprofiles, nlevels), config.clouds.clwde, dtype=np.float64), liq)
+    profiles.setHydroDeffN(
+        np.full((nprofiles, nlevels), config.clouds.clwde, dtype=np.float64), liq
+    )
 
     profiles.setHydroN(data.qi.astype(np.float64), ice)
     profiles.setHydroFracN(cfrac, ice)
-    profiles.setHydroDeffN(np.full((nprofiles, nlevels), config.clouds.icede, dtype=np.float64), ice)
+    profiles.setHydroDeffN(
+        np.full((nprofiles, nlevels), config.clouds.icede, dtype=np.float64), ice
+    )
 
     # Near-surface: [t2m, q2m, u10, v10, wind_fetch]; shape (nprofiles, nsurfaces=1, 5)
-    profiles.NearSurface = np.column_stack([
-        data.t2m,                          # 2m temperature from T2 variable
-        data.q2m,                          # 2m water vapor from Q2 variable
-        data.u10[:, 0],
-        data.v10[:, 0],
-        np.full(nprofiles, 1e5),           # wind fetch [m]
-    ]).astype(np.float64).reshape(nprofiles, 1, 5)
+    profiles.NearSurface = (
+        np.column_stack(
+            [
+                data.t2m,  # 2m temperature from T2 variable
+                data.q2m,  # 2m water vapor from Q2 variable
+                data.u10[:, 0],
+                data.v10[:, 0],
+                np.full(nprofiles, 1e5),  # wind fetch [m]
+            ]
+        )
+        .astype(np.float64)
+        .reshape(nprofiles, 1, 5)
+    )
 
     # Datetime: (nprofiles, 6) = [year, month, day, hour, min, sec]
     profiles.DateTimes = np.tile(
-        [time_utc.year, time_utc.month, time_utc.day,
-         time_utc.hour, time_utc.minute, time_utc.second],
+        [
+            time_utc.year,
+            time_utc.month,
+            time_utc.day,
+            time_utc.hour,
+            time_utc.minute,
+            time_utc.second,
+        ],
         (nprofiles, 1),
     ).astype(np.int32)
 
@@ -195,12 +209,14 @@ def build_profiles(
     sunzen, sunazi = compute_solar_angles(data.lat, data.lon, time_utc)
 
     # Angles: [satzen, satazi, sunzen, sunazi]
-    profiles.Angles = np.column_stack([
-        np.full(nprofiles, config.satellite.satzen),
-        np.full(nprofiles, config.satellite.satazi),
-        sunzen,
-        sunazi,
-    ]).astype(np.float64)
+    profiles.Angles = np.column_stack(
+        [
+            np.full(nprofiles, config.satellite.satzen),
+            np.full(nprofiles, config.satellite.satazi),
+            sunzen,
+            sunazi,
+        ]
+    ).astype(np.float64)
 
     # Surface geometry: [lat, lon, elevation_km]
     profiles.SurfGeom = np.column_stack(
@@ -208,29 +224,39 @@ def build_profiles(
     ).astype(np.float64)
 
     # Surface type: [surftype, watertype]; shape (nprofiles, nsurfaces=1, 2)
-    profiles.SurfType = np.column_stack(
-        [data.surftype, np.zeros(nprofiles, dtype=np.int32)]
-    ).astype(np.int32).reshape(nprofiles, 1, 2)
+    profiles.SurfType = (
+        np.column_stack([data.surftype, np.zeros(nprofiles, dtype=np.int32)])
+        .astype(np.int32)
+        .reshape(nprofiles, 1, 2)
+    )
 
     # Skin: [skinT, salinity, snow_frac, foam_frac, fastem_coef1..5]; shape (nprofiles, nsurfaces=1, 9)
     sfc = config.surface
     skin = np.tile(
-        [0.0, sfc.default_salinity, sfc.default_snow_fraction, sfc.default_foam_fraction,
-         3.0, 5.0, 15.0, 0.1, 0.3],   # default FASTEM-6 coefficients
+        [
+            0.0,
+            sfc.default_salinity,
+            sfc.default_snow_fraction,
+            sfc.default_foam_fraction,
+            3.0,
+            5.0,
+            15.0,
+            0.1,
+            0.3,
+        ],  # default FASTEM-6 coefficients
         (nprofiles, 1),
     ).astype(np.float64)
     skin[:, 0] = data.tsk[:, 0]
     profiles.Skin = skin.reshape(nprofiles, 1, 9)
-    
+
     # Aerosols if enabled
     if config.aerosols.enabled:
-        profiles.MmrAer = True # Use kg/kg mixing ratios
+        profiles.MmrAer = True  # Use kg/kg mixing ratios
         for n in range(1, config.aerosols.naer_total + 1):
             if n in data.aerosol_data:
                 profiles.setAerN(data.aerosol_data[n], n)
             else:
                 profiles.setAerN(zeros.copy(), n)
-        
 
     return profiles
 
@@ -270,13 +296,19 @@ def setup_surface_emis_refl(
     try:
         ir_atlas = pyrttov.Atlas()
         ir_atlas.AtlasPath = coef.resolve(coef.emis_atlas_path)
-        ir_atlas.loadIrEmisAtlas(month, rttov_instance, year=year, atlas_id=2, ang_corr=True) # ATLAS ID = 3 for CAMEL climatology
-        atlas_emis = ir_atlas.getEmisBrdf(rttov_instance)  # (nprofiles, nsurfaces, nchan)
+        ir_atlas.loadIrEmisAtlas(
+            month, rttov_instance, year=year, atlas_id=2, ang_corr=True
+        )  # ATLAS ID = 3 for CAMEL climatology
+        atlas_emis = ir_atlas.getEmisBrdf(
+            rttov_instance
+        )  # (nprofiles, nsurfaces, nchan)
         surfemisrefl[0] = atlas_emis  # emissivity
         surfemisrefl[1] = atlas_emis  # direct reflectance
         logger.debug("Loaded IR emissivity atlas for month %d", month)
     except Exception as e:
-        logger.warning("Could not load IR emissivity atlas: %s. Using RTTOV defaults.", e)
+        logger.warning(
+            "Could not load IR emissivity atlas: %s. Using RTTOV defaults.", e
+        )
 
     # Try BRDF atlas for VIS channels
     if mode == "vis":
@@ -285,7 +317,9 @@ def setup_surface_emis_refl(
             brdf_atlas.AtlasPath = coef.resolve(coef.brdf_atlas_path)
             brdf_atlas.loadBrdfAtlas(month, rttov_instance)
             brdf_atlas.IncSea = False
-            atlas_brdf = brdf_atlas.getEmisBrdf(rttov_instance)  # (nprofiles, nsurfaces, nchan)
+            atlas_brdf = brdf_atlas.getEmisBrdf(
+                rttov_instance
+            )  # (nprofiles, nsurfaces, nchan)
             surfemisrefl[1] = atlas_brdf
             logger.debug("Loaded BRDF atlas for month %d", month)
         except Exception as e:
