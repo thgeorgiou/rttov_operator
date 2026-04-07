@@ -66,6 +66,8 @@ def create_rttov_instance(
     rttov.Options.Aerosols = config.aerosols.enabled
     rttov.Options.UserHydroOptParam = False  # was UserCldOptParam
     rttov.Options.ThermalSolver = 3  # 3=delta-Eddington (THERMAL_SOLVER_DELTA_EDD)
+    rttov.Options.OverlapParam = 3  # 3=2col_weighted, required for per_hydro_frac
+    rttov.Options.PerHydroFrac = True  # per-type cloud fractions (liquid/ice separate)
     rttov.Options.O3Data = False  # was OzoneData
     rttov.Options.ApplyRegLimits = True
     rttov.Options.VerboseWrapper = config.verbose
