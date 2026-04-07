@@ -26,8 +26,9 @@ The package exposes a `rttov-operator` CLI entry point.
 
 3. **Coefficient files** for your instrument, downloaded from the NWPSAF coefficients page:
    - Gas absorption coefficient file (`.dat`)
-   - Cloud/hydrometeor scattering coefficient file
-   - MFASIS-NN file (`.nc`) if simulating VIS channels
+   - Cloud/hydrometeor scattering coefficient file (hydrotable)
+   - Aerosol scattering coefficient file (aertable), if using aerosols
+   - MFASIS-NN file (`.dat`) if simulating VIS channels
    - IR emissivity atlas and/or BRDF atlas (optional but recommended)
 
    > **Note:** RTTOV v13 coefficient files are incompatible with v14. HDF5 files (`.H5`) must be replaced with the v14 netCDF equivalents.
@@ -43,6 +44,7 @@ The package exposes a `rttov-operator` CLI entry point.
    | `QICE` | Cloud ice mixing ratio [kg/kg] |
    | `QSNOW` | Snow mixing ratio [kg/kg] |
    | `CLDFRA` | Cloud fraction [0–1] |
+   | `DUST_1`–`DUST_5` | GOCART dust bin mixing ratios [kg/kg] (required when aerosols enabled) |
    | `TSK` | Skin temperature [K] |
    | `PSFC` | Surface pressure [Pa] |
    | `T2` | 2 m temperature [K] |
@@ -62,8 +64,9 @@ Copy `config.example.toml` and edit it for your setup:
 [coefficients]
 rttov_base = "/opt/rttov14"
 coef_file = "rtcoef_rttov14/rttov14pred54L/rtcoef_msg_4_seviri_o3co2.dat"
-sccld_file = "rtcoef_rttov14/cldaer_visir/sccldcoef_msg_4_seviri.dat"
-mfasis_cld_file = "rtcoef_rttov14/mfasis_nn/rttov_mfasis_nn_cld_msg_4_seviri.nc"
+hydrotable_file = "rtcoef_rttov14/hydrotable_visir/rttov_hydrotable_msg_4_seviri.dat"
+aertable_file = "rtcoef_rttov14/aertable_visir/rttov_aertable_msg_4_seviri_cams.dat"
+mfasis_nn_file = "rtcoef_rttov14/mfasis_nn/rttov_mfasis_nn_hydro_msg_4_seviri_v140.dat"
 python_wrapper_path = "/opt/rttov14/wrapper"  # omit if already on PYTHONPATH
 ```
 
@@ -93,6 +96,21 @@ clwde = 20.0         # effective diameter for liquid clouds [µm]
 icede = 60.0         # effective diameter for ice clouds [µm]
 ```
 The hydrometeor indices must match the ordering in `sccld_file`. For the standard 6-type RTTOV scheme: 0=Stco, 1=Stma, 2=Cucc, 3=Cucp, 4=Cuma, 5=Cirr.
+
+**`[aerosols]`** — dust aerosol simulation (disabled by default):
+```toml
+[aerosols]
+enabled = true
+naer_total = 9  # number of species in aertable_file
+
+[aerosols.species_map]
+# Maps aertable species indices (1-based) to linear combinations of WRF GOCART dust variables.
+# Each entry: { WRF_VAR = weight, ... }  →  AerN = Σ weight × WRF_VAR
+2 = {"DUST_1" = 0.7197}
+3 = {"DUST_1" = 0.1069}
+4 = {"DUST_1" = 0.1734, "DUST_2" = 1.0, "DUST_3" = 1.0, "DUST_4" = 1.0, "DUST_5" = 1.0}
+```
+Species not listed in `species_map` are set to zero. The mapping weights convert WRF's five GOCART dust size bins to the three CAMS bins expected by the aertable. See `utils/wrf_to_cams_dust_mapping.py` for how those weights are derived.
 
 **`[satellite]`** — constant viewing geometry across the domain:
 ```toml

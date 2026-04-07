@@ -37,7 +37,8 @@ The tool is a postprocessing plugin for [WRF-Ensembly](https://github.com/NOA-Re
 - `SurfEmisRefl` shape: `(5, nprofiles, nsurfaces, nchannels)` — set to -1 to use RTTOV's built-in emissivity models
 - `Skin`, `NearSurface`, `SurfType` include the `nsurfaces` dimension: `(nprofiles, nsurfaces, leadingdim)`
 - Hydrometeors are set per-type via `setHydroN/setHydroFracN/setHydroDeffN` with **1-based** indices
-- File attributes: `FileHydrotable` (not `FileSccld`), `FileMfasisNN` (not `FileMfasisCld`)
+- Aerosols are set per-type via `setAerN` with **1-based** indices; enable with `Options.Aerosols = True` and `MmrAer = True`
+- File attributes: `FileHydrotable` (not `FileSccld`), `FileAertable`, `FileMfasisNN` (not `FileMfasisCld`)
 - `ThermalSolver = 3` = delta-Eddington; `SolarSolver = 2` = MFASIS-NN
 
 **pyrttov import:**
@@ -45,5 +46,8 @@ The tool is a postprocessing plugin for [WRF-Ensembly](https://github.com/NOA-Re
 
 **Config field names** (easy to confuse with older docs):
 - `hydrotable_file` — cloud/hydrometeor scattering coefficients
+- `aertable_file` — aerosol scattering coefficients (CAMS scheme)
 - `mfasis_nn_file` — MFASIS neural network file for VIS channels
 - `liq_hydro_idx` / `ice_hydro_idx` — **0-based** in config; converted to **1-based** before calling `setHydroN`
+- `aerosols.species_map` — outer keys are **1-based** aertable species indices; values are `{WRF_var: weight}` dicts; `convert.py` computes `AerN = Σ weight × WRF_var` and stores the result in `RTTOVProfileData.aerosol_data`
+- `aerosols.naer_total` — total species count in the aertable file; species not in `species_map` are zeroed out
